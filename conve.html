@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Private Network — Student Chat</title>
+  <link rel="stylesheet" href="conve.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="lock">🔒</div>
+        <h1>PrivateNet Chat</h1>
+        <p class="muted">Local-only — messages stored on this device</p>
+      </div>
+
+      <div class="user-select">
+        <label for="user">You are:</label>
+        <select id="user">
+          <option value="studentA">HEER</option>
+          <option value="studentB">SHAAN</option>
+        </select>
+        <button id="clear" title="Clear local chat">Clear</button>
+      </div>
+    </header>
+
+    <section class="chat-area" id="chatArea" aria-live="polite">
+      <!-- messages will be injected here -->
+    </section>
+
+    <form id="messageForm" class="composer" onsubmit="return false;">
+      <input id="messageInput" autocomplete="off" placeholder="Type a message..." />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+  </main>
+
+  <script>
+    // Simple local-only chat simulation for two students.
+    (function(){
+      const userEl = document.getElementById('user');
+      const chatArea = document.getElementById('chatArea');
+      const msgInput = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const clearBtn = document.getElementById('clear');
+
+      const STORAGE_KEY = 'privatenet_chat_v1';
+
+      // Load messages from localStorage
+      function loadMessages(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        }catch(e){
+          console.error('load error', e);
+          return [];
+        }
+      }
+
+      function saveMessages(list){
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        }catch(e){
+          console.error('save error', e);
+        }
+      }
+
+      function render(){
+        const messages = loadMessages();
+        chatArea.innerHTML = '';
+        if(messages.length === 0){
+          chatArea.innerHTML = '<div class="empty">No messages yet. Start the private conversation 👋</div>';
+          chatArea.scrollTop = chatArea.scrollHeight;
+          return;
+        }
+        messages.forEach(msg => {
+          const el = document.createElement('div');
+          el.className = 'msg ' + (msg.sender === 'studentA' ? 'left' : 'right');
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.textContent = (msg.sender === 'studentA' ? 'Riya' : 'Aman') + ' • ' + new Date(msg.t).toLocaleTimeString();
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          bubble.textContent = msg.text;
+          el.appendChild(bubble);
+          el.appendChild(meta);
+          chatArea.appendChild(el);
+        });
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+
+      function sendMessage(){
+        const text = msgInput.value.trim();
+        if(!text) return;
+        const messages = loadMessages();
+        messages.push({
+          sender: userEl.value,
+          text,
+          t: Date.now(),
+        });
+        saveMessages(messages);
+        msgInput.value = '';
+        render();
+        msgInput.focus();
+      }
+
+      // keyboard enter
+      msgInput.addEventListener('keydown', e => {
+        if(e.key === 'Enter' && !e.shiftKey){
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      sendBtn.addEventListener('click', sendMessage);
+
+      clearBtn.addEventListener('click', ()=>{
+        if(confirm('Clear local chat? This will delete messages on this device.')) {
+          localStorage.removeItem(STORAGE_KEY);
+          render();
+        }
+      });
+
+      // initial render
+      render();
+
+      // accessibility: focus input
+      msgInput.focus();
+
+      // expose for console debugging (optional)
+      window._PrivateNetChat = {
+        loadMessages, saveMessages, render
+      };
+    })();
+  </script>
+</body>
+</html>
